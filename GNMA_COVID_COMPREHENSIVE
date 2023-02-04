@@ -1,0 +1,84 @@
+WITH FHA_EOM AS (SELECT Loan.MspLastRunDate, Loan.LoanNumber, OldLoanNumber, InvestorId, FirstPrincipalBalance AS UPB, loType, 
+CASE 
+WHEN
+LOAN.ForeclosureStatusCode = 'A'
+Then 'FC'
+WHEN DATEDIFF(m, Loan.NextPaymentDueDate, DATEFROMPARTS(datepart(yy, Loan.MspLastRunDate), datepart(mm, Loan.MspLastRunDate), 01) ) = 1
+OR DATEDIFF(m, Loan.NextPaymentDueDate, DATEFROMPARTS(datepart(yy, Loan.MspLastRunDate), datepart(mm, Loan.MspLastRunDate), 01) ) = 0
+THEN 'D030'
+WHEN DATEDIFF(m, Loan.NextPaymentDueDate, DATEFROMPARTS(datepart(yy, Loan.MspLastRunDate), datepart(mm, Loan.MspLastRunDate), 01) ) = 2
+THEN 'D060'
+WHEN DATEDIFF(m, Loan.NextPaymentDueDate, DATEFROMPARTS(datepart(yy, Loan.MspLastRunDate), datepart(mm, Loan.MspLastRunDate), 01) ) = 3
+THEN 'D090'
+WHEN DATEDIFF(m, Loan.NextPaymentDueDate, DATEFROMPARTS(datepart(yy, Loan.MspLastRunDate), datepart(mm, Loan.MspLastRunDate), 01) ) >= 4
+THEN 'D120'
+ELSE 'CURRENT'
+END AS 'Del','Sub1' as DataSource, LossMitTemplateName, LossMitStatusCode
+
+FROM Sub1.Loan
+INNER JOIN Sub1.OriginalLoan ON OriginalLOAN.LoanNumber = Loan.LoanNumber AND OriginalLoan.MspLastRunDate = Loan.MspLastRunDate
+LEFT JOIN Sub1.Foreclosure ON loan.LoanNumber = Foreclosure.LoanNumber and loan.MspLastRunDate = Foreclosure.MspLastRunDate
+LEFT JOIN SUB1.LossMitigation lm ON OriginalLoan.LoanNumber = LM.LoanNumber AND OriginalLoan.MspLastRunDate = LM.MspLastRunDate
+Where LoType in ('1') AND InvestorId <> 'ACT' AND CAST(FIRSTPRINCIPALBALANCE AS MONEY) > 1 and Loan.MspLastRunDate = @Sub1), 
+
+VA_EOM AS (SELECT Loan.MspLastRunDate, Loan.LoanNumber, OldLoanNumber, InvestorId, FirstPrincipalBalance AS UPB, loType, 
+CASE 
+WHEN
+LOAN.ForeclosureStatusCode = 'A'
+Then 'FC'
+WHEN DATEDIFF(m, Loan.NextPaymentDueDate, DATEFROMPARTS(datepart(yy, Loan.MspLastRunDate), datepart(mm, Loan.MspLastRunDate), 01) ) = 1
+OR DATEDIFF(m, Loan.NextPaymentDueDate, DATEFROMPARTS(datepart(yy, Loan.MspLastRunDate), datepart(mm, Loan.MspLastRunDate), 01) ) = 0
+THEN 'D030'
+WHEN DATEDIFF(m, Loan.NextPaymentDueDate, DATEFROMPARTS(datepart(yy, Loan.MspLastRunDate), datepart(mm, Loan.MspLastRunDate), 01) ) = 2
+THEN 'D060'
+WHEN DATEDIFF(m, Loan.NextPaymentDueDate, DATEFROMPARTS(datepart(yy, Loan.MspLastRunDate), datepart(mm, Loan.MspLastRunDate), 01) ) = 3
+THEN 'D090'
+WHEN DATEDIFF(m, Loan.NextPaymentDueDate, DATEFROMPARTS(datepart(yy, Loan.MspLastRunDate), datepart(mm, Loan.MspLastRunDate), 01) ) >= 4
+THEN 'D120'
+ELSE 'CURRENT'
+END AS 'Del','Sub1' as DataSource, LossMitTemplateName, LossMitStatusCode
+
+FROM Sub1.Loan
+INNER JOIN Sub1.OriginalLoan ON OriginalLOAN.LoanNumber = Loan.LoanNumber AND OriginalLoan.MspLastRunDate = Loan.MspLastRunDate
+LEFT JOIN Sub1.Foreclosure ON loan.LoanNumber = Foreclosure.LoanNumber and loan.MspLastRunDate = Foreclosure.MspLastRunDate
+LEFT JOIN SUB1.LossMitigation lm ON OriginalLoan.LoanNumber = LM.LoanNumber AND OriginalLoan.MspLastRunDate = LM.MspLastRunDate
+Where LoType in ('2') AND InvestorId <> 'ACT' AND CAST(FIRSTPRINCIPALBALANCE AS MONEY) > 1 and Loan.MspLastRunDate = @Sub1),
+
+USDA_EOM AS (SELECT Loan.MspLastRunDate, Loan.LoanNumber, OldLoanNumber, InvestorId, FirstPrincipalBalance AS UPB, loType, 
+CASE 
+WHEN
+LOAN.ForeclosureStatusCode = 'A'
+Then 'FC'
+WHEN DATEDIFF(m, Loan.NextPaymentDueDate, DATEFROMPARTS(datepart(yy, Loan.MspLastRunDate), datepart(mm, Loan.MspLastRunDate), 01) ) = 1
+OR DATEDIFF(m, Loan.NextPaymentDueDate, DATEFROMPARTS(datepart(yy, Loan.MspLastRunDate), datepart(mm, Loan.MspLastRunDate), 01) ) = 0
+THEN 'D030'
+WHEN DATEDIFF(m, Loan.NextPaymentDueDate, DATEFROMPARTS(datepart(yy, Loan.MspLastRunDate), datepart(mm, Loan.MspLastRunDate), 01) ) = 2
+THEN 'D060'
+WHEN DATEDIFF(m, Loan.NextPaymentDueDate, DATEFROMPARTS(datepart(yy, Loan.MspLastRunDate), datepart(mm, Loan.MspLastRunDate), 01) ) = 3
+THEN 'D090'
+WHEN DATEDIFF(m, Loan.NextPaymentDueDate, DATEFROMPARTS(datepart(yy, Loan.MspLastRunDate), datepart(mm, Loan.MspLastRunDate), 01) ) >= 4
+THEN 'D120'
+ELSE 'CURRENT'
+END AS 'Del','Sub1' as DataSource, LossMitTemplateName, LossMitStatusCode
+
+FROM Sub1.Loan
+INNER JOIN Sub1.OriginalLoan ON OriginalLOAN.LoanNumber = Loan.LoanNumber AND OriginalLoan.MspLastRunDate = Loan.MspLastRunDate
+LEFT JOIN Sub1.Foreclosure ON loan.LoanNumber = Foreclosure.LoanNumber and loan.MspLastRunDate = Foreclosure.MspLastRunDate
+LEFT JOIN SUB1.LossMitigation lm ON OriginalLoan.LoanNumber = LM.LoanNumber AND OriginalLoan.MspLastRunDate = LM.MspLastRunDate
+Where LoType in ('9') AND InvestorId <> 'ACT' AND CAST(FIRSTPRINCIPALBALANCE AS MONEY) > 1 and Loan.MspLastRunDate = @Sub1),
+
+FHA_NON_COVID AS (SELECT (((SELECT sum(CAST(UPB AS MONEY)) from FHA_EOM where Del <> 'Current'))/((SELECT SUM(CAST(UPB AS MONEY)) FROM FHA_EOM))*100-
+(((SELECT sum(CAST(UPB AS MONEY)) from USDA_EOM where Del <> 'Current' AND (LossMitStatusCode='A' AND LossMitTemplateName='PDFORB'))/((SELECT SUM(CAST(UPB AS MONEY)) FROM FHA_EOM))*100))) as DelPerCent),
+
+VA_NON_COVID AS (SELECT (((SELECT sum(CAST(UPB AS MONEY)) from VA_EOM where Del <> 'Current'))/((SELECT SUM(CAST(UPB AS MONEY)) FROM VA_EOM))*100-
+(((SELECT sum(CAST(UPB AS MONEY)) from VA_EOM where Del <> 'Current' AND (LossMitStatusCode='A' AND LossMitTemplateName='PDFORB'))/((SELECT SUM(CAST(UPB AS MONEY)) FROM VA_EOM))*100))) as DelPerCent),
+
+USDA_NON_COVID AS (SELECT (((SELECT sum(CAST(UPB AS MONEY)) from USDA_EOM where Del <> 'Current'))/((SELECT SUM(CAST(UPB AS MONEY)) FROM USDA_EOM))*100-
+(((SELECT sum(CAST(UPB AS MONEY)) from USDA_EOM where Del <> 'Current' AND (LossMitStatusCode='A' AND LossMitTemplateName='PDFORB'))/((SELECT SUM(CAST(UPB AS MONEY)) FROM USDA_EOM))*100))) as DelPerCent)
+
+SELECT ('FHA_NON_COVID') AS Investor, * FROM FHA_NON_COVID
+UNION 
+SELECT ('VA_NON_COVID'), * FROM VA_NON_COVID
+UNION 
+SELECT ('USDA_NON_COVID'), * FROM USDA_NON_COVID
+
