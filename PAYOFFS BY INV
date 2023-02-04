@@ -1,0 +1,59 @@
+DECLARE @BD date = '2022-12-01',  
+@ED date = '2022-12-31';
+
+WITH SUB1_PAYOFF AS (
+SELECT LoanNumber, PaymentInFullDate
+FROM Sub1.Loan 
+WHERE Cast(PaymentInFullDate as date) BETWEEN @BD AND @ED),
+
+SUB1_MAX AS (
+SELECT L.LoanNumber, Cast(FirstPrincipalBalance as money) as UPB, L.MspLastRunDate, T.PaymentInFullDate, InvestorId
+FROM Sub1.Loan L INNER JOIN SUB1_PAYOFF T ON L.LoanNumber = T.LoanNumber
+WHERE L.MspLastRunDate between dateadd(dd, -7, T.PaymentInFullDate) and T.PaymentInFullDate),
+
+SUB1_TOTALS AS (
+SELECT LoanNumber, MAX(MspLastRunDate) as DataDate
+from SUB1_MAX 
+Where UPB > 0
+GROUP BY LoanNumber
+),
+
+SUB1_ALL AS (
+SELECT t.LoanNumber, T.DataDate, m.UPB, m.PaymentInFullDate, InvestorId
+FROM SUB1_TOTALS T INNER JOIN SUB1_MAX M ON T.LoanNumber = M.LoanNumber AND T.DataDate = M.MspLastRunDate
+Group by T.LoanNumber, T.DataDate, M.UPB, M.PaymentInFullDate, InvestorId
+),
+
+SUB1_PAYOFF AS (
+SELECT LOAN_NBR_SERVICER, PAYOFF_DATE
+FROM SUB1.LOAN
+WHERE Cast(PAYOFF_DATE as date) BETWEEN @BD AND @ED),
+
+SUB1_MAX AS (
+SELECT L.LOAN_NBR_SERVICER, Cast(PRIN_BALANCE_CURR as money) as UPB, L.DATA_ASOF_DATE, T.PAYOFF_DATE, INV_CODE
+FROM SUB1.Loan L INNER JOIN SUB1_PAYOFF T ON L.LOAN_NBR_SERVICER = T.LOAN_NBR_SERVICER
+WHERE L.DATA_ASOF_DATE between dateadd(dd, -7, T.PAYOFF_DATE) and T.PAYOFF_DATE),
+
+SUB1_TOTALS AS (
+SELECT M.LOAN_NBR_SERVICER, MAX(DATA_ASOF_DATE) as DataDate
+from SUB1_MAX M 
+Where UPB > 0
+GROUP BY LOAN_NBR_SERVICER),
+
+SUB1_ALL AS (
+SELECT t.LOAN_NBR_SERVICER, T.DataDate, m.UPB, m.PAYOFF_DATE, INV_CODE
+FROM SUB1_TOTALS T INNER JOIN SUB1_MAX M ON T.LOAN_NBR_SERVICER = M.LOAN_NBR_SERVICER AND T.DataDate = M.DATA_ASOF_DATE
+Group by T.LOAN_NBR_SERVICER, T.DataDate, M.UPB, M.PAYOFF_DATE, INV_CODE
+),
+
+PAYOFFS AS (
+SELECT * FROM SUB1_ALL
+UNION
+SELECT SUB1_ALL.* FROM SUB1_ALL)
+
+SELECT IIf([InvestorID] In ('4EF','4EG', '47V', '47W', '47X'),'FNMA',IIf([InvestorID] in ('5AK', '30J'),'FHLMC',IIF([InvestorID] in ('6BV', 'XBV'), 'GNMA', 'Others')))
+AS Investor, COUNT(LoanNumber) as LoansPIF, SUM(UPB) AS UPB_PIF, MIN(PaymentInFullDate) as Start_Range ,MAX(PaymentInFullDate) as End_Range
+FROM PAYOFFS
+where upb > 0.01
+group by IIf([InvestorID] In ('4EF','4EG', '47V', '47W', '47X'),'FNMA',IIf([InvestorID] in ('5AK', '30J'),'FHLMC',IIF([InvestorID] in ('6BV', 'XBV'), 'GNMA', 'Others')))
+
