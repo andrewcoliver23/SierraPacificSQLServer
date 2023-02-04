@@ -1,3 +1,5 @@
+DECLARE @Sub1 date = '2022-12-30';
+
 WITH FHA_EOM AS (SELECT Loan.MspLastRunDate, Loan.LoanNumber, OldLoanNumber, InvestorId, FirstPrincipalBalance AS UPB, loType, 
 CASE 
 WHEN
