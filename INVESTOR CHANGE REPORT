@@ -1,0 +1,41 @@
+WITH SUB1_YESTERDAY AS (
+SELECT * FROM Sub1.LOAN
+WHERE MspLastRunDate = '2022-12-30'),
+-- THIS IS THE DATE BEFORE YOUR RUN DATE
+
+SUB1_TODAY AS (
+SELECT L.LoanNumber as TodayLoanNumber, OldLoanNumberFormatted AS SpmLoanNumber, l.InvestorId as TodayInvCode, T.InvestorId, MortgagorFirstName, MortgagorLastName, l.FirstPrincipalBalance, l.NextPaymentDueDate, L.MspLastRunDate, t.MspLastRunDate as PreviousDate
+from Sub1.Loan L inner join Sub1.Borrower B ON L.LoanNumber =B.LoanNumber AND L.MspLastRunDate = B.MspLastRunDate
+inner join Sub1.OriginalLoan O ON B.LoanNumber = O.LoanNumber AND B.MspLastRunDate = O.MspLastRunDate
+LEFT JOIN SUB1_YESTERDAY T ON L.LoanNumber = T.LoanNumber
+where l.MspLastRunDate = dateadd(D, 1, t.MspLastRunDate)),
+--									^
+-- CHANGE DATEADD INCREMENT TO 3 ON MONDAY RUN DATE
+
+SUB2_YESTERDAY AS (
+SELECT * FROM SUB2.LOAN
+WHERE DATA_ASOF_DATE = '2022-12-31'),
+-- THIS IS THE DATE BEFORE YOUR RUN DATE
+
+SUB2_TODAY AS (
+SELECT L.LOAN_NBR_SERVICER as TodayLoanNumber, l.LOAN_NBR_OTHERFormatted ,l.INV_CODE as TodayInvCode, T.INV_CODE, MORTGAGOR_FIRST_NAME, MORTGAGOR_LAST_NAME, L.PRIN_BALANCE_CURR, L.PMT_DUE_DATE_NEXT, L.DATA_ASOF_DATE, t.DATA_ASOF_DATE as PreviousDate
+from SUB2.Loan L INNER JOIN SUB2.Borrower B ON L.LOAN_NBR_SERVICER = B.LOAN_NBR_SERVICER AND L.DATA_ASOF_DATE = B.DATA_ASOF_DATE
+LEFT JOIN SUB2_YESTERDAY T ON L.LOAN_NBR_SERVICER = T.LOAN_NBR_SERVICER
+where l.DATA_ASOF_DATE = dateadd(d, 1, t.DATA_ASOF_DATE)),
+--									^
+-- CHANGE DATEADD INCREMENT TO 3 ON A MONDAY RUN DATE
+
+PUNION AS (select * from SUB1_TODAY union select * from SUB2_TODAY),
+
+CHANGE AS (SELECT SpmLoanNumber,
+CASE
+WHEN TodayInvCode != T.InvestorId
+THEN 'YES'
+ELSE 'NO'
+END AS CHANGED_ID, TodayLoanNumber as LoanNumber, TodayInvCode AS TodayInvestorID, InvestorId as Previous_InvestorID, T.MortgagorFirstName, T.MortgagorLastName, FirstPrincipalBalance, NextPaymentDueDate, MspLastRunDate, PreviousDate
+FROM PUNION T
+)
+
+SELECT * FROM CHANGE
+WHERE CHANGED_ID IN ('YES')
+
