@@ -1,0 +1,90 @@
+DECLARE @LCD date = '2022-12-30',
+@PHHD date = '2022-12-31';
+
+WITH SUB2_DEL AS (
+SELECT 
+CASE 
+WHEN
+FCL_STATUS = 'A'
+Then 'FC'
+WHEN DATEDIFF(m, Loan.PMT_DUE_DATE_NEXT, datefromparts(datepart(year, getdate()), datepart(month, getdate()), 01)) = 1
+THEN 'D030'
+WHEN DATEDIFF(m, Loan.PMT_DUE_DATE_NEXT, datefromparts(datepart(year, getdate()), datepart(month, getdate()), 01)) = 2
+THEN 'D060'
+WHEN DATEDIFF(m, Loan.PMT_DUE_DATE_NEXT, datefromparts(datepart(year, getdate()), datepart(month, getdate()), 01)) = 3
+THEN 'D090'
+WHEN DATEDIFF(m, Loan.PMT_DUE_DATE_NEXT, datefromparts(datepart(year, getdate()), datepart(month, getdate()), 01)) = 4
+THEN 'D120'
+WHEN DATEDIFF(m, Loan.PMT_DUE_DATE_NEXT, datefromparts(datepart(year, getdate()), datepart(month, getdate()), 01)) >= 5
+THEN 'D150'
+ELSE 'CURRENT'
+END AS 'Del', SUM(cast(PRIN_BALANCE_CURR as money)) as UPB, COUNT(Loan.LOAN_NBR_SERVICER) as #
+FROM SUB2.Loan INNER JOIN SUB2.Delinquency ON Loan.LOAN_NBR_SERVICER = Delinquency.LOAN_NBR_SERVICER AND LOAN.DATA_ASOF_DATE = Delinquency.DATA_ASOF_DATE
+inner join Sub2.Property p on Delinquency.LOAN_NBR_SERVICER = p.LOAN_NBR_SERVICER and Delinquency.DATA_ASOF_DATE = p.DATA_ASOF_DATE
+LEFT JOIN SUB2.Foreclosure ON Delinquency.LOAN_NBR_SERVICER = Foreclosure.LOAN_NBR_SERVICER AND Delinquency.DATA_ASOF_DATE = Foreclosure.DATA_ASOF_DATE
+WHERE LOAN.DATA_ASOF_DATE = @PHHD AND CAST(PRIN_BALANCE_CURR AS MONEY) >1 and INV_CODE NOT IN ('30M', '1S1') 
+GROUP BY CASE 
+WHEN
+FCL_STATUS = 'A'
+Then 'FC'
+WHEN DATEDIFF(m, Loan.PMT_DUE_DATE_NEXT, datefromparts(datepart(year, getdate()), datepart(month, getdate()), 01)) = 1
+THEN 'D030'
+WHEN DATEDIFF(m, Loan.PMT_DUE_DATE_NEXT, datefromparts(datepart(year, getdate()), datepart(month, getdate()), 01)) = 2
+THEN 'D060'
+WHEN DATEDIFF(m, Loan.PMT_DUE_DATE_NEXT, datefromparts(datepart(year, getdate()), datepart(month, getdate()), 01)) = 3
+THEN 'D090'
+WHEN DATEDIFF(m, Loan.PMT_DUE_DATE_NEXT, datefromparts(datepart(year, getdate()), datepart(month, getdate()), 01)) = 4
+THEN 'D120'
+WHEN DATEDIFF(m, Loan.PMT_DUE_DATE_NEXT, datefromparts(datepart(year, getdate()), datepart(month, getdate()), 01)) >= 5
+THEN 'D150'
+ELSE 'CURRENT'
+END),
+
+SUB1_DEL AS (
+SELECT 
+CASE 
+WHEN
+LOAN.ForeclosureStatusCode = 'A'
+Then 'FC'
+WHEN DATEDIFF(m, Loan.NextPaymentDueDate, datefromparts(datepart(year, getdate()), datepart(month, getdate()), 01)) = 1
+THEN 'D030'
+WHEN DATEDIFF(m, Loan.NextPaymentDueDate, datefromparts(datepart(year, getdate()), datepart(month, getdate()), 01)) = 2
+THEN 'D060'
+WHEN DATEDIFF(m, Loan.NextPaymentDueDate, datefromparts(datepart(year, getdate()), datepart(month, getdate()), 01)) = 3
+THEN 'D090'
+WHEN DATEDIFF(m, Loan.NextPaymentDueDate, datefromparts(datepart(year, getdate()), datepart(month, getdate()), 01)) = 4
+THEN 'D120'
+WHEN DATEDIFF(m, Loan.NextPaymentDueDate, datefromparts(datepart(year, getdate()), datepart(month, getdate()), 01)) >= 5
+THEN 'D150'
+ELSE 'CURRENT'
+END AS 'Del',  SUM(cast(FirstPrincipalBalance as money)) as UPB, COUNT(Loan.LoanNumber) as #
+FROM Sub1.Loan INNER JOIN SUB1.Delinquency ON LOAN.LoanNumber = Delinquency.LoanNumber AND LOAN.MspLastRunDate = Delinquency.MspLastRunDate
+inner join Sub1.Property on Delinquency.LoanNumber = Property.LoanNumber and Delinquency.MspLastRunDate = Property.MspLastRunDate
+WHERE LOAN.MspLastRunDate = @LCD
+AND CAST(FirstPrincipalBalance AS MONEY) >1 AND Loan.InvestorId <> 'ACT' AND Loan.LoanReoStatusCode <> 'A'AND loan.LoanNumber not in ('0061820908', '0027890193')
+GROUP BY CASE 
+WHEN
+LOAN.ForeclosureStatusCode = 'A'
+Then 'FC'
+WHEN DATEDIFF(m, Loan.NextPaymentDueDate, datefromparts(datepart(year, getdate()), datepart(month, getdate()), 01)) = 1
+THEN 'D030'
+WHEN DATEDIFF(m, Loan.NextPaymentDueDate, datefromparts(datepart(year, getdate()), datepart(month, getdate()), 01)) = 2
+THEN 'D060'
+WHEN DATEDIFF(m, Loan.NextPaymentDueDate, datefromparts(datepart(year, getdate()), datepart(month, getdate()), 01)) = 3
+THEN 'D090'
+WHEN DATEDIFF(m, Loan.NextPaymentDueDate, datefromparts(datepart(year, getdate()), datepart(month, getdate()), 01)) = 4
+THEN 'D120'
+WHEN DATEDIFF(m, Loan.NextPaymentDueDate, datefromparts(datepart(year, getdate()), datepart(month, getdate()), 01)) >= 5
+THEN 'D150'
+ELSE 'CURRENT'
+END),
+
+ALL_DEL AS 
+(SELECT * FROM SUB2_DEL
+UNION
+SELECT * FROM SUB1_DEL)
+
+select Del, SUM(#) AS #, sum(UPB) AS UPB
+FROM ALL_DEL
+GROUP BY Del
+
