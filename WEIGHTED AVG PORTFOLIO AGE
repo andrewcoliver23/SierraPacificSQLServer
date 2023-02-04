@@ -1,0 +1,12 @@
+WITH SUB1_VINTAGE AS (
+SELECT Sub1.Loan.MspLastRunDate, Sub1.Loan.LoanNumber, CAST(FirstPrincipalBalance AS MONEY) AS FirstPrincipalBalance, Sub1.Loan.LoanReoStatusCode, Sub1.Loan.PaymentInFullStopCode, LoanClosingDate as FundingDate,
+Sub1.Property.PropertyAlphaStateCode as PropertyState, Sub1.Loan.InvestorId, Sub1.Loan.ForeclosureStatusCode, Sub1.Loan.HiType, Sub1.Loan.LoType
+FROM Sub1.Loan INNER JOIN Sub1.Property ON Sub1.Loan.MspLastRunDate = Sub1.Property.MspLastRunDate AND Sub1.Loan.LoanNumber = Sub1.Property.LoanNumber
+INNER JOIN SUB1.OriginalLoan ON Property.LoanNumber = OriginalLoan.LoanNumber and Property.MspLastRunDate = OriginalLoan.MspLastRunDate
+WHERE Loan.MspLastRunDate = '2022-12-30' AND CAST(FirstPrincipalBalance AS MONEY) > 1 AND Sub1.Loan.LoanReoStatusCode <> 'A' AND Sub1.Loan.PaymentInFullStopCode <> '1' AND Sub1.Loan.InvestorId <> 'ACT'),
+
+AVG1 AS (SELECT ((FirstPrincipalBalance)/((select aVG(FirstPrincipalBalance) from SUB1_VINTAGE)))*DATEDIFF(M, FundingDate, GETDATE()) AS WEIGHTED_AVG
+FROM SUB1_VINTAGE)
+
+SELECT AVG(WEIGHTED_AVG)
+FROM AVG1
