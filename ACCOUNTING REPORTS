@@ -1,0 +1,117 @@
+DECLARE 
+@Sub1D DATE = '2023-02-28',
+@Sub2D DATE = '2023-02-28';
+
+
+
+:out "C:\monthly data files\2023\02-28-23 EOM\GNMA90+.csv"
+set nocount on;
+
+SELECT Loan.MspLastRunDate, Loan.LoanNumber, OldLoanNumber, InvestorId, FirstPrincipalBalance, DelinquencyIndicator, 'Sub1' as DataSource
+FROM Sub1.Loan INNER JOIN Sub1.Delinquency ON LOAN.LoanNumber = Delinquency.LoanNumber AND LOAN.MspLastRunDate = Delinquency.MspLastRunDate
+INNER JOIN Sub1.OriginalLoan ON OriginalLOAN.LoanNumber = Delinquency.LoanNumber AND OriginalLoan.MspLastRunDate = Delinquency.MspLastRunDate
+Where InvestorId in ('6BV', 'XBV') AND CAST(FIRSTPRINCIPALBALANCE AS MONEY) > 1 AND DelinquencyIndicator IN ('3', '4') and Loan.MspLastRunDate = @Sub1D AND loan.LoanNumber not in ('0061820908', '0027890193')
+!!:GO
+GO
+
+DECLARE 
+@Sub1D DATE = '2023-02-28',
+@Sub2D DATE = '2023-02-28';
+
+:out "C:\monthly data files\2023\02-28-23 EOM\STATEBREAKOUT.csv"
+set nocount on;
+WITH Sub1_VINTAGE AS (
+SELECT Sub1.Loan.MspLastRunDate, Sub1.Loan.LoanNumber, CAST(FirstPrincipalBalance AS MONEY) AS FirstPrincipalBalance, Sub1.Loan.LoanReoStatusCode, Sub1.Loan.PaymentInFullStopCode, LoanClosingDate as FundingDate,
+Sub1.Property.PropertyAlphaStateCode as PropertyState, Sub1.Loan.InvestorId, Sub1.Loan.ForeclosureStatusCode, Sub1.Loan.HiType, Sub1.Loan.LoType
+FROM Sub1.Loan INNER JOIN Sub1.Property ON Sub1.Loan.MspLastRunDate = Sub1.Property.MspLastRunDate AND Sub1.Loan.LoanNumber = Sub1.Property.LoanNumber
+INNER JOIN Sub1.OriginalLoan ON Property.LoanNumber = OriginalLoan.LoanNumber and Property.MspLastRunDate = OriginalLoan.MspLastRunDate
+WHERE Loan.MspLastRunDate = @Sub1D AND CAST(FirstPrincipalBalance AS MONEY) > 1 AND Sub1.Loan.LoanReoStatusCode <> 'A' AND Sub1.Loan.InvestorId <> 'ACT' AND loan.LoanNumber not in ('0061820908', '0027890193')),
+
+Sub2_VINTAGE AS (
+SELECT LOAN.DATA_ASOF_DATE as MspLastRundate, LOAN.LOAN_NBR_SERVICER as LoanNumber, Cast(PRIN_BALANCE_CURR AS MONEY) AS FirstPrincipalBalance, LOAN.LOAN_REO_STATUS_CODE as LoanReoStatuscode, 
+LOAN.PAYOFF_TYPE,LOAN_CLOSING_DATE as FundingDate, Sub2.Property.PROP_STATE as PropertyState, LOAN.INV_CODE AS InvestorId, 
+Sub2.Foreclosure.FCL_STATUS as ForeclosureStatusCode, LOAN.LIEN_POSITION as HiType, LOAN.LOAN_TYPE as LoType
+FROM Sub2.Loan INNER JOIN Sub2.Property ON LOAN.DATA_ASOF_DATE = Property.DATA_ASOF_DATE AND LOAN.LOAN_NBR_SERVICER = Property.LOAN_NBR_SERVICER 
+LEFT JOIN Sub2.Foreclosure ON Sub2.Property.DATA_ASOF_DATE = Sub2.Foreclosure.DATA_ASOF_DATE AND Sub2.Property.LOAN_NBR_SERVICER = Sub2.Foreclosure.LOAN_NBR_SERVICER
+WHERE LOAN.DATA_ASOF_DATE= @Sub2D AND Cast(PRIN_BALANCE_CURR AS money) > 1 AND LOAN.LOAN_REO_STATUS_CODE<> 'A'  AND LOAN.INV_CODE Not In ('1S1','47Y','ACT','4C9','30M')),
+
+VINTAGE_DATA_TABLE AS (
+select * from Sub1_VINTAGE
+UNION
+select * from Sub2_VINTAGE)
+
+SELECT PropertyState, count(v.LoanNumber) as LoanNumber, sum(FirstPrincipalBalance) as FirstPrincipalBalance
+from VINTAGE_DATA_TABLE	v
+group by PropertyState
+order by 3 desc	 
+!!:GO
+GO
+
+DECLARE 
+@Sub1D DATE = '2023-02-28',
+@Sub2D DATE = '2023-02-28';
+
+
+:out "C:\monthly data files\2023\02-28-23 EOM\VINTAGEDETAIL.csv"
+set nocount on;
+WITH Sub1_VINTAGE AS (
+SELECT Sub1.Loan.MspLastRunDate, Cast(Sub1.Loan.LoanNumber as varchar) as LoanNumber, CAST(FirstPrincipalBalance AS MONEY) AS FirstPrincipalBalance, Sub1.Loan.LoanReoStatusCode, Sub1.Loan.PaymentInFullStopCode, LoanClosingDate as FundingDate,
+Sub1.Property.PropertyAlphaStateCode as PropertyState, Sub1.Loan.InvestorId, Sub1.Loan.ForeclosureStatusCode, Sub1.Loan.HiType, Sub1.Loan.LoType, 'Sub1' as DataSource, loan.AnnualInterestRate, OriginalLoan.OldLoanNumber
+FROM Sub1.Loan INNER JOIN Sub1.Property ON Sub1.Loan.MspLastRunDate = Sub1.Property.MspLastRunDate AND Sub1.Loan.LoanNumber = Sub1.Property.LoanNumber
+INNER JOIN Sub1.OriginalLoan ON Property.LoanNumber = OriginalLoan.LoanNumber and Property.MspLastRunDate = OriginalLoan.MspLastRunDate
+WHERE Loan.MspLastRunDate = @Sub1D AND CAST(FirstPrincipalBalance AS MONEY) > 1 AND Sub1.Loan.LoanReoStatusCode <> 'A' AND Sub1.Loan.InvestorId <> 'ACT' AND loan.LoanNumber not in ('0061820908', '0027890193')),
+
+Sub2_VINTAGE AS (
+SELECT LOAN.DATA_ASOF_DATE as MspLastRundate, cast(LOAN.LOAN_NBR_SERVICER as varchar) as LoanNumber, Cast(PRIN_BALANCE_CURR AS MONEY) AS FirstPrincipalBalance, LOAN.LOAN_REO_STATUS_CODE as LoanReoStatuscode, 
+LOAN.PAYOFF_TYPE,LOAN_CLOSING_DATE as FundingDate, Sub2.Property.PROP_STATE as PropertyState, LOAN.INV_CODE AS InvestorId, 
+Sub2.Foreclosure.FCL_STATUS as ForeclosureStatusCode, LOAN.LIEN_POSITION as HiType, LOAN.LOAN_TYPE as LoType, 'Sub2' AS DataSource, loan.INT_RATE as AnnualInterestRate, loan.LOAN_NBR_OTHER as OldLoanNumber
+FROM Sub2.Loan INNER JOIN Sub2.Property ON LOAN.DATA_ASOF_DATE = Property.DATA_ASOF_DATE AND LOAN.LOAN_NBR_SERVICER = Property.LOAN_NBR_SERVICER 
+LEFT JOIN Sub2.Foreclosure ON Sub2.Property.DATA_ASOF_DATE = Sub2.Foreclosure.DATA_ASOF_DATE AND Sub2.Property.LOAN_NBR_SERVICER = Sub2.Foreclosure.LOAN_NBR_SERVICER
+WHERE LOAN.DATA_ASOF_DATE= @Sub2D AND Cast(PRIN_BALANCE_CURR AS money) > 1 AND LOAN.LOAN_REO_STATUS_CODE<> 'A'  AND LOAN.INV_CODE Not In ('1S1','47Y','ACT','4C9','30M')),
+
+VINTAGE_DATA_TABLE AS (
+select * from Sub1_VINTAGE
+UNION
+select * from Sub2_VINTAGE)
+
+SELECT DataSource, OldLoanNumber, VINTAGE_DATA_TABLE.LoanNumber, VINTAGE_DATA_TABLE.FirstPrincipalBalance, InvestorId ,AnnualInterestRate, FundingDate
+from VINTAGE_DATA_TABLE
+!!:GO
+GO
+
+DECLARE 
+@Sub1D DATE = '2023-02-28',
+@Sub2D DATE = '2023-02-28';
+
+
+:out "C:\monthly data files\2023\02-28-23 EOM\VINTAGEBREAKOUT.csv"
+set nocount on;
+WITH Sub1_VINTAGE AS (
+SELECT Sub1.Loan.MspLastRunDate, Sub1.Loan.LoanNumber, CAST(FirstPrincipalBalance AS MONEY) AS FirstPrincipalBalance, Sub1.Loan.LoanReoStatusCode, Sub1.Loan.PaymentInFullStopCode, LoanClosingDate as FundingDate,
+Sub1.Property.PropertyAlphaStateCode as PropertyState, Sub1.Loan.InvestorId, Sub1.Loan.ForeclosureStatusCode, Sub1.Loan.HiType, Sub1.Loan.LoType
+FROM Sub1.Loan INNER JOIN Sub1.Property ON Sub1.Loan.MspLastRunDate = Sub1.Property.MspLastRunDate AND Sub1.Loan.LoanNumber = Sub1.Property.LoanNumber
+INNER JOIN Sub1.OriginalLoan ON Property.LoanNumber = OriginalLoan.LoanNumber and Property.MspLastRunDate = OriginalLoan.MspLastRunDate
+WHERE Loan.MspLastRunDate = @Sub1D AND CAST(FirstPrincipalBalance AS MONEY) > 1 AND Sub1.Loan.LoanReoStatusCode <> 'A' AND Sub1.Loan.InvestorId <> 'ACT' AND loan.LoanNumber not in ('0061820908', '0027890193')),
+
+Sub2_VINTAGE AS (
+SELECT LOAN.DATA_ASOF_DATE as MspLastRundate, LOAN.LOAN_NBR_SERVICER as LoanNumber, Cast(PRIN_BALANCE_CURR AS MONEY) AS FirstPrincipalBalance, LOAN.LOAN_REO_STATUS_CODE as LoanReoStatuscode, 
+LOAN.PAYOFF_TYPE,LOAN_CLOSING_DATE as FundingDate, Sub2.Property.PROP_STATE as PropertyState, LOAN.INV_CODE AS InvestorId, 
+Sub2.Foreclosure.FCL_STATUS as ForeclosureStatusCode, LOAN.LIEN_POSITION as HiType, LOAN.LOAN_TYPE as LoType
+FROM Sub2.Loan INNER JOIN Sub2.Property ON LOAN.DATA_ASOF_DATE = Property.DATA_ASOF_DATE AND LOAN.LOAN_NBR_SERVICER = Property.LOAN_NBR_SERVICER 
+LEFT JOIN Sub2.Foreclosure ON Sub2.Property.DATA_ASOF_DATE = Sub2.Foreclosure.DATA_ASOF_DATE AND Sub2.Property.LOAN_NBR_SERVICER = Sub2.Foreclosure.LOAN_NBR_SERVICER
+WHERE LOAN.DATA_ASOF_DATE= @Sub2D AND Cast(PRIN_BALANCE_CURR AS money) > 1 AND LOAN.LOAN_REO_STATUS_CODE<> 'A'  AND LOAN.INV_CODE Not In ('1S1','47Y','ACT','4C9','30M')),
+
+VINTAGE_DATA_TABLE AS (
+select * from Sub1_VINTAGE
+UNION
+select * from Sub2_VINTAGE)
+
+SELECT DATEPART(YEAR, FundingDate) AS 'Year', count(v.LoanNumber) as LoanNumber, sum(FirstPrincipalBalance) as FirstPrincipalBalance
+from VINTAGE_DATA_TABLE	v 
+group by DATEPART(YEAR, FundingDate)
+order by 1 ASC
+!!:GO
+GO
+
+
+
